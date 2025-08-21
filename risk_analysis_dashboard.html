@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk Analysis Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-upload input[type=file] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-upload-btn {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+        }
+
+        .file-upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .upload-info {
+            margin-top: 15px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .date-range-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            display: none;
+        }
+
+        .date-range-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .date-input-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .date-input-group label {
+            font-weight: bold;
+            color: #333;
+            font-size: 1rem;
+        }
+
+        .date-input-group input[type="date"] {
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            background: white;
+        }
+
+        .date-input-group input[type="date"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .filter-button {
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 24px;
+        }
+
+        .filter-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .filter-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-back-button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .results-back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .filter-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .filter-tag {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .filter-tag .close-btn {
+            background: rgba(255, 255, 255, 0.3);
+            border: none;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s ease;
+        }
+
+        .filter-tag .close-btn:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .clear-filters-btn {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .clear-filters-btn:hover {
+            background: #ff3742;
+            transform: translateY(-1px);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .risks-list {
+            margin-bottom: 30px;
+        }
+
+        .risk-box {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid #667eea;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .risk-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            border-left: 5px solid #4285f4;
+        }
+
+        .risk-detail-page {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .risk-detail-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .risk-detail-header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            position: relative;
+        }
+
+        .risk-detail-title {
+            font-size: 2.5rem;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .risk-detail-subtitle {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .risk-info-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border-top: 4px solid #667eea;
+        }
+
+        .info-row {
+            display: flex;
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f0f0;
+            align-items: flex-start;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-size: 1rem;
+            color: #333;
+            font-weight: 600;
+            min-width: 180px;
+            margin-right: 20px;
+        }
+
+        .info-value {
+            font-size: 1rem;
+            color: #666;
+            flex: 1;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .info-value.important {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .back-button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        @media (max-width: 768px) {
+            .info-row {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .info-label {
+                min-width: auto;
+                margin-right: 0;
+            }
+            
+            .risk-detail-title {
+                font-size: 2rem;
+            }
+            
+            .risk-detail-container {
+                padding: 20px 15px;
+            }
+
+            .date-range-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart-container {
+                min-width: 300px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+
+        .risk-header {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .risk-date {
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        .chart-title {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 350px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .error-message {
+            background: #ff4757;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+            display: none;
+        }
+
+        .success-message {
+            background: #2ed573;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+            display: none;
+        }
+
+        .no-data {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 40px;
+        }
+
+        .current-filter-info {
+            background: #e8f2ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #0066cc;
+            font-weight: 500;
+        }
+
+        /* Hide upload section initially */
+        .upload-section {
+            display: none;
+        }
+
+        /* Show results section by default */
+        .results {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Risk Analysis</h1>
+        </div>
+
+        <div class="upload-section" id="uploadSection">
+            <div class="file-upload">
+                <input type="file" id="fileInput" accept=".xlsx,.xls" />
+                <div class="file-upload-btn">
+                    📊 Choose Excel File
+                </div>
+            </div>
+            <div class="upload-info"></div>
+        </div>
+
+        <div class="date-range-section" id="dateRangeSection">
+            <button class="results-back-button" onclick="goBackToResults()" style="margin-bottom: 20px;">
+                ← Back to Charts
+            </button>
+            
+            <h3 style="text-align: center; margin-bottom: 25px; color: #333; font-size: 1.5rem;">Select date range</h3>
+            <div class="date-range-container">
+                <div class="date-input-group">
+                    <label for="fromDate">Start date</label>
+                    <input type="date" id="fromDate" />
+                </div>
+                
+                <div class="date-input-group">
+                    <label for="toDate">End date</label>
+                    <input type="date" id="toDate" />
+                </div>
+                
+                <button class="filter-button" id="filterButton" onclick="applyDateFilter()">
+                    🔍 Apply Filter
+                </button>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing data...</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+
+        <div class="results" id="results">
+            <button class="results-back-button" id="resultsBackButton" onclick="showDateRangeSection()">
+                📅 Change Date Range
+            </button>
+            
+            <div class="current-filter-info" id="currentFilterInfo"></div>
+            
+            <div class="filter-tags" id="filterTags"></div>
+            
+            <div class="charts-section">
+                <div class="chart-container">
+                    <h3 class="chart-title">Risk Status</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="chartA"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3 class="chart-title">Məxsusi Risk dərəcəsi</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="chartR"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="risks-list" id="risksList"></div>
+        </div>
+
+        <div class="risk-detail-page" id="riskDetailPage">
+            <div class="risk-detail-container">
+                <button class="back-button" onclick="closeRiskDetail()">
+                    ← Back to Results
+                </button>
+                
+                <div class="risk-detail-header">
+                    <div class="risk-detail-title" id="detailTitle">Risk Details</div>
+                </div>
+
+                <div class="risk-info-container" id="riskInfoContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chartA, chartR;
+        let allData = [];
+        let filteredData = [];
+        let activeFilters = {
+            status: null,
+            risk: null
+        };
+
+        // Generate sample data for demo purposes
+        function generateSampleData() {
+            const sampleData = [
+                // Header row
+                ['Status', 'Risk ID', '', 'Source', 'Structure', 'Date', 'Department', 'Finding', '', '', 'Process Owner', 'Risk Name', '', '', '', '', '', 'Risk Level']
+            ];
+
+            const statuses = ['həll olunmuş', 'gecikdirilmiş', 'ləğv edilmiş', 'müddəti bitməmiş', 'proqnozlaşdırılmış'];
+            const riskLevels = ['Yüksək', 'Kritik', 'Orta', 'Aşağı'];
+            const findings = ['Security vulnerability', 'Process inefficiency', 'Data inconsistency', 'Access control issue', 'System performance'];
+            const processOwners = ['IT Manager', 'Security Officer', 'System Admin', 'Database Admin'];
+
+            // Generate 50 sample risks
+            for (let i = 1; i <= 50; i++) {
+                const randomDate = new Date();
+                randomDate.setDate(randomDate.getDate() - Math.floor(Math.random() * 30)); // Last 30 days
+                
+                const row = [
+                    statuses[Math.floor(Math.random() * statuses.length)], // Status (Column A)
+                    `RISK-${i.toString().padStart(3, '0')}`, // Risk ID (Column B)
+                    '', // Column C
+                    'Internal Audit', // Source (Column D)
+                    'IT Department', // Structure (Column E)
+                    randomDate.toISOString().split('T')[0], // Date (Column F)
+                    'İT', // Department (Column G)
+                    findings[Math.floor(Math.random() * findings.length)], // Finding (Column H)
+                    '', '', // Columns I, J
+                    processOwners[Math.floor(Math.random() * processOwners.length)], // Process Owner (Column K)
+                    `Risk ${i} - ${findings[Math.floor(Math.random() * findings.length)]}`, // Risk Name (Column L)
+                    '', '', '', '', '', // Columns M-Q
+                    riskLevels[Math.floor(Math.random() * riskLevels.length)] // Risk Level (Column R)
+                ];
+                
+                sampleData.push(row);
+            }
+
+            return sampleData;
+        }
+
+        // Initialize the page with sample data
+        function initializePage() {
+            allData = generateSampleData();
+            setDefaultDateRange();
+            
+            // Auto-apply the default date range
+            setTimeout(() => {
+                applyDateFilter();
+            }, 500);
+        }
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                processFile(file);
+            }
+        });
+
+        function setDefaultDateRange() {
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1); // First day of current month
+            const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of current month
+            
+            document.getElementById('fromDate').value = firstDay.toISOString().split('T')[0];
+            document.getElementById('toDate').value = lastDay.toISOString().split('T')[0];
+        }
+
+        function showLoading(show = true) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            setTimeout(() => {
+                errorEl.style.display = 'none';
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            const successEl = document.getElementById('successMessage');
+            successEl.textContent = message;
+            successEl.style.display = 'block';
+            setTimeout(() => {
+                successEl.style.display = 'none';
+            }, 3000);
+        }
+
+        function formatDate(dateValue) {
+            if (!dateValue) return 'Unknown';
+            const dateStr = dateValue.toString();
+            let date;
+            if (dateStr.includes('-')) {
+                date = new Date(dateStr);
+            } else {
+                const excelDate = parseFloat(dateStr);
+                if (!isNaN(excelDate)) {
+                    date = new Date((excelDate - 25569) * 86400 * 1000);
+                } else {
+                    return 'Invalid Date';
+                }
+            }
+            if (isNaN(date.getTime())) return 'Invalid Date';
+            return date.toISOString().split('T')[0];
+        }
+
+        function processFile(file) {
+            showLoading(true);
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    if (jsonData.length < 2) {
+                        throw new Error('Excel file appears to be empty or has insufficient data');
+                    }
+                    
+                    allData = jsonData;
+                    
+                    document.getElementById('uploadSection').style.display = 'none';
+                    document.getElementById('results').style.display = 'none';
+                    document.getElementById('dateRangeSection').style.display = 'block';
+                    
+                    setDefaultDateRange();
+                    
+                } catch (error) {
+                    console.error('Error processing file:', error);
+                    showError('Error processing file: ' + error.message);
+                } finally {
+                    showLoading(false);
+                }
+            };
+            
+            reader.onerror = function() {
+                showError('Error reading file');
+                showLoading(false);
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+
+        function applyDateFilter() {
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value;
+            
+            if (!fromDate || !toDate) {
+                showError('Please select both from and to dates');
+                return;
+            }
+            
+            if (new Date(fromDate) > new Date(toDate)) {
+                showError('From date must be earlier than or equal to to date');
+                return;
+            }
+            
+            showLoading(true);
+            
+            setTimeout(() => {
+                try {
+                    analyzeDataWithDateRange(allData, fromDate, toDate);
+                    document.getElementById('dateRangeSection').style.display = 'none';
+                    document.getElementById('uploadSection').style.display = 'none';
+                    document.getElementById('results').style.display = 'block';
+                } catch (error) {
+                    showError('Error filtering data: ' + error.message);
+                } finally {
+                    showLoading(false);
+                }
+            }, 500);
+        }
+
+        function showDateRangeSection() {
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('dateRangeSection').style.display = 'block';
+        }
+
+        function goBackToResults() {
+            document.getElementById('dateRangeSection').style.display = 'none';
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function goBackToUpload() {
+            document.getElementById('dateRangeSection').style.display = 'none';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('uploadSection').style.display = 'block';
+            
+            // Reset all data
+            allData = [];
+            filteredData = [];
+            activeFilters = { status: null, risk: null };
+            
+            // Clear file input
+            document.getElementById('fileInput').value = '';
+            
+            // Destroy charts if they exist
+            if (chartA) {
+                chartA.destroy();
+                chartA = null;
+            }
+            if (chartR) {
+                chartR.destroy();
+                chartR = null;
+            }
+        }
+
+        function updateFilterTags() {
+            const filterTagsContainer = document.getElementById('filterTags');
+            filterTagsContainer.innerHTML = '';
+
+            if (activeFilters.status || activeFilters.risk) {
+                if (activeFilters.status) {
+                    const statusTag = document.createElement('div');
+                    statusTag.className = 'filter-tag';
+                    statusTag.innerHTML = `Status: ${activeFilters.status} <button class="close-btn" onclick="removeFilter('status')">×</button>`;
+                    filterTagsContainer.appendChild(statusTag);
+                }
+
+                if (activeFilters.risk) {
+                    const riskTag = document.createElement('div');
+                    riskTag.className = 'filter-tag';
+                    riskTag.innerHTML = `Risk: ${activeFilters.risk} <button class="close-btn" onclick="removeFilter('risk')">×</button>`;
+                    filterTagsContainer.appendChild(riskTag);
+                }
+
+                const clearBtn = document.createElement('button');
+                clearBtn.className = 'clear-filters-btn';
+                clearBtn.textContent = 'Clear All';
+                clearBtn.onclick = clearAllFilters;
+                filterTagsContainer.appendChild(clearBtn);
+            }
+        }
+
+        function removeFilter(filterType) {
+            activeFilters[filterType] = null;
+            applyFiltersToRisks();
+            updateFilterTags();
+        }
+
+        function clearAllFilters() {
+            activeFilters = { status: null, risk: null };
+            applyFiltersToRisks();
+            updateFilterTags();
+        }
+
+        function applyFiltersToRisks() {
+            let dataToShow = filteredData;
+
+            if (activeFilters.status) {
+                dataToShow = dataToShow.filter(row => {
+                    const statusValue = row[0] ? row[0].toString().trim() : 'Unknown';
+                    return statusValue === activeFilters.status;
+                });
+            }
+
+            if (activeFilters.risk) {
+                dataToShow = dataToShow.filter(row => {
+                    const riskValue = row[17] ? row[17].toString().trim() : 'Unknown';
+                    return riskValue === activeFilters.risk;
+                });
+            }
+
+            createRiskBoxes(dataToShow);
+            updateCurrentFilterInfo(dataToShow.length);
+        }
+
+        function updateCurrentFilterInfo(count) {
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value;
+            let filterText = `There ${count === 1 ? 'is' : 'are'} ${count} risk${count !== 1 ? 's' : ''} between ${fromDate} and ${toDate}`;
+            
+            if (activeFilters.status || activeFilters.risk) {
+                filterText += '';
+            }
+            
+            document.getElementById('currentFilterInfo').textContent = filterText;
+        }
+
+        function onChartClick(chartType, event, elements) {
+            if (elements.length > 0) {
+                const elementIndex = elements[0].index;
+                const chart = chartType === 'status' ? chartA : chartR;
+                const label = chart.data.labels[elementIndex];
+                
+                if (chartType === 'status') {
+                    activeFilters.status = activeFilters.status === label ? null : label;
+                } else {
+                    activeFilters.risk = activeFilters.risk === label ? null : label;
+                }
+                
+                applyFiltersToRisks();
+                updateFilterTags();
+            }
+        }
+
+        function analyzeDataWithDateRange(data, fromDate, toDate) {
+            const fromDateObj = new Date(fromDate);
+            const toDateObj = new Date(toDate);
+            
+            filteredData = [];
+            
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (row[5] && row[6]) {
+                    const dateStr = row[5].toString();
+                    const departmentStr = row[6].toString().trim().toLowerCase();
+                    
+                    let rowDate;
+                    if (dateStr.includes('-')) {
+                        rowDate = new Date(dateStr);
+                    } else {
+                        const excelDate = parseFloat(dateStr);
+                        if (!isNaN(excelDate)) {
+                            rowDate = new Date((excelDate - 25569) * 86400 * 1000);
+                        } else {
+                            continue;
+                        }
+                    }
+                    
+                    if (rowDate >= fromDateObj && rowDate <= toDateObj && departmentStr === 'i̇t') {
+                        filteredData.push(row);
+                    }
+                }
+            }
+
+            if (filteredData.length === 0) {
+                showError(`No IT department risks found for the selected date range (${fromDate} to ${toDate}). Please check your date format in column F and department values in column G.`);
+                return;
+            }
+
+            activeFilters = { status: null, risk: null };
+
+            const columnAData = {};
+            const columnRData = {};
+
+            filteredData.forEach(row => {
+                const valueA = row[0] ? row[0].toString().trim() : 'Unknown';
+                columnAData[valueA] = (columnAData[valueA] || 0) + 1;
+
+                const valueR = row[17] ? row[17].toString().trim() : 'Unknown';
+                columnRData[valueR] = (columnRData[valueR] || 0) + 1;
+            });
+
+            updateCurrentFilterInfo(filteredData.length);
+            updateFilterTags();
+
+            createRiskBoxes(filteredData);
+
+            const columnAColors = Object.keys(columnAData).map(label => {
+                if (label === 'həll olunmuş') return 'rgb(50, 205, 50)';
+                if (label === 'gecikdirilmiş') return 'rgb(210, 4, 45)';
+                if (label === 'ləğv edilmiş') return 'rgb(130, 129, 127)';
+                if (label === 'müddəti bitməmiş') return 'rgb(237, 217, 175)';
+                if (label === 'proqnozlaşdırılmış') return 'rgb(191, 147, 55)';
+                if (label === 'qəbul edilmiş') return 'rgb(135, 101, 50)';
+                if (label === 'risk sahibinin nəzarətində') return 'rgb(179, 159, 130)';
+                if (label === 'icra tarixi vaxtında təqdim edilməmiş') return 'rgb(139, 0, 0)';
+                return 'rgb(204, 204, 204)';
+            });
+
+            const columnRColors = Object.keys(columnRData).map(label => {
+                if (label === 'Yüksək') return 'rgb(210, 4, 45)';
+                if (label === 'Kritik') return 'rgb(56, 42, 23)';
+                if (label === 'Orta') return 'rgb(50, 205, 50)';
+                if (label === 'Aşağı') return 'rgb(170, 255, 0)';
+                return 'rgb(204, 204, 204)';
+            });
+
+            createChart('chartA', 'Risk Status Distribution', columnAData, columnAColors, 'status');
+            createChart('chartR', 'Risk Level Distribution', columnRData, columnRColors, 'risk');
+        }
+
+        function createRiskBoxes(dataToShow) {
+            const risksList = document.getElementById('risksList');
+            risksList.innerHTML = '';
+
+            if (dataToShow.length === 0) {
+                risksList.innerHTML = '<div class="no-data">No risks match the selected filters</div>';
+                return;
+            }
+
+            dataToShow.forEach((row, index) => {
+                const riskBox = document.createElement('div');
+                riskBox.className = 'risk-box';
+                
+                const columnBValue = row[1] ? row[1].toString().trim() : 'Unknown';
+                const columnFValue = formatDate(row[5]);
+                
+                riskBox.innerHTML = `
+                    <div class="risk-header">Risk ${columnBValue}</div>
+                    <div class="risk-date">Riskin aşkarlanma tarixi: ${columnFValue}</div>
+                `;
+                
+                riskBox.addEventListener('click', () => {
+                    openRiskDetail(row, index);
+                });
+                
+                risksList.appendChild(riskBox);
+            });
+        }
+
+        function openRiskDetail(riskData, index) {
+            const columnMapping = [
+                { label: 'Risk status', value: riskData[0] || 'N/A' },
+                { label: 'Sıra nömrəsi', value: riskData[1] || 'N/A' },
+                { label: 'Mənbə-kanal', value: riskData[3] || 'N/A' },
+                { label: 'Mənbə-Struktur', value: riskData[4] || 'N/A' },
+                { label: 'Riskin aşkarlanma tarixi', value: formatDate(riskData[5]) || 'N/A' },
+                { label: 'Risk tapıntısı', value: riskData[7] || 'N/A' },
+                { label: 'Prosesin sahibi', value: riskData[10] || 'N/A' },
+                { label: 'Risk adı', value: riskData[11] || 'N/A' },
+                { label: 'Məxsusi risk dərəcəsi', value: riskData[17] || 'N/A' }
+            ];
+
+            document.getElementById('detailTitle').textContent = `Risk ${riskData[1] || 'Unknown'}`;
+
+            const riskInfoContainer = document.getElementById('riskInfoContainer');
+            riskInfoContainer.innerHTML = '';
+
+            columnMapping.forEach(item => {
+                const infoRow = document.createElement('div');
+                infoRow.className = 'info-row';
+                
+                infoRow.innerHTML = `
+                    <div class="info-label">${item.label}:</div>
+                    <div class="info-value ${item.label === 'Sıra nömrəsi' ? 'important' : ''}">${item.value}</div>
+                `;
+                
+                riskInfoContainer.appendChild(infoRow);
+            });
+
+            document.getElementById('riskDetailPage').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeRiskDetail() {
+            document.getElementById('riskDetailPage').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeRiskDetail();
+            }
+        });
+
+        function createChart(canvasId, title, data, colors, chartType) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            
+            if (canvasId === 'chartA' && chartA) {
+                chartA.destroy();
+            } else if (canvasId === 'chartR' && chartR) {
+                chartR.destroy();
+            }
+
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+
+            if (labels.length === 0) {
+                ctx.font = '16px Arial';
+                ctx.fillStyle = '#666';
+                ctx.textAlign = 'center';
+                ctx.fillText('No data available', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return;
+            }
+
+            const chart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        animateRotate: true,
+                        duration: 1500
+                    },
+                    onClick: (event, elements) => onChartClick(chartType, event, elements)
+                }
+            });
+
+            if (canvasId === 'chartA') {
+                chartA = chart;
+            } else {
+                chartR = chart;
+            }
+        }
+
+        // Initialize the page when it loads
+        window.addEventListener('load', function() {
+            initializePage();
+        });
+    </script>
+</body>
+</html>
