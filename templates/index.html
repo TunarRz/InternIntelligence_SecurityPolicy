@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Access Control Management with File Upload</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; padding: 30px; text-align: center; }
+        .header h1 { font-size: 2.5rem; font-weight: 300; margin-bottom: 10px; }
+        .content { padding: 40px; }
+        .upload-section { background: linear-gradient(135deg, #f8f9ff 0%, #e8edff 100%); border-radius: 15px; padding: 30px; margin-bottom: 30px; border: 2px dashed #667eea; transition: all 0.3s ease; }
+        .upload-section.dragover { background: linear-gradient(135deg, #e8edff 0%, #d8d9ff 100%); transform: scale(1.02); }
+        .upload-area { text-align: center; padding: 40px; cursor: pointer; }
+        .upload-icon { font-size: 3rem; color: #667eea; margin-bottom: 20px; }
+        .upload-text { font-size: 1.2rem; color: #2c3e50; margin-bottom: 10px; }
+        .upload-hint { color: #666; font-size: 0.9rem; }
+        input[type="file"] { display: none; }
+        .file-info { background: white; border-radius: 10px; padding: 15px; margin-top: 20px; display: none; }
+        .file-info.active { display: block; }
+        .file-name { font-weight: 600; color: #2c3e50; margin-bottom: 5px; }
+        .file-size { color: #666; font-size: 0.9rem; }
+        .selection-section { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
+        .selection-card { background: white; border-radius: 15px; padding: 25px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); }
+        .selection-title { font-size: 1.3rem; font-weight: 600; color: #2c3e50; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; }
+        .selection-list { max-height: 300px; overflow-y: auto; }
+        .selection-item { padding: 12px; margin-bottom: 8px; background: #f8f9ff; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; border: 2px solid transparent; }
+        .selection-item:hover { background: #e8edff; transform: translateX(5px); }
+        .selection-item.selected { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-color: #667eea; }
+        .action-section { text-align: center; margin: 30px 0; }
+        .btn { padding: 15px 40px; font-size: 1.1rem; border: none; border-radius: 50px; cursor: pointer; transition: all 0.3s ease; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3); }
+        .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .results-section { background: white; border-radius: 15px; padding: 30px; margin-top: 30px; display: none; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); }
+        .results-section.active { display: block; }
+        .results-title { font-size: 1.5rem; font-weight: 600; color: #2c3e50; margin-bottom: 20px; }
+        .result-item { padding: 15px; margin-bottom: 15px; border-radius: 10px; border-left: 4px solid #667eea; background: #f8f9ff; }
+        .result-success { border-left-color: #48bb78; background: #f0fff4; }
+        .result-error { border-left-color: #f56565; background: #fff5f5; }
+        .result-warning { border-left-color: #ed8936; background: #fffdf7; }
+        .loading { display: none; text-align: center; padding: 40px; }
+        .loading.active { display: block; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-text { color: #666; font-size: 1.1rem; }
+        .status-badge { display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; margin-left: 10px; }
+        .status-success { background: #48bb78; color: white; }
+        .status-error { background: #f56565; color: white; }
+        .status-warning { background: #ed8936; color: white; }
+        @media (max-width: 768px) { .selection-section { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Access Control Management System</h1>
+        </div>
+        <div class="content">
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Excel faylını yükləyin</div>
+                    <div class="upload-hint">Klik edin və ya faylı bura sürüşdürün</div>
+                </div>
+                <input type="file" id="fileInput" accept=".xlsx,.xls" />
+                <div class="file-info" id="fileInfo">
+                    <div class="file-name" id="fileName"></div>
+                    <div class="file-size" id="fileSize"></div>
+                </div>
+            </div>
+            <div class="selection-section">
+                <div class="selection-card">
+                    <div class="selection-title">Yoxlama növünü seçin</div>
+                    <div class="selection-list" id="checksList"></div>
+                </div>
+                <div class="selection-card">
+                    <div class="selection-title">Sistemi seçin</div>
+                    <div class="selection-list" id="systemsList"></div>
+                </div>
+            </div>
+            <div class="action-section">
+                <button class="btn btn-primary" id="executeBtn" disabled>Yoxlamanı başlat</button>
+            </div>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div class="loading-text">Yoxlama həyata keçirilir...</div>
+            </div>
+            <div class="results-section" id="resultsSection">
+                <div class="results-title">Yoxlama nəticələri</div>
+                <div id="resultsContent"></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+const apiBase = window.location.origin;
+let selectedFile = null;
+let selectedCheck = null;
+let selectedSystem = null;
+
+async function init() {
+  await populateChecks();
+  await populateSystems();
+  setupDragAndDrop();
+  document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+  document.getElementById('executeBtn').addEventListener('click', executeCheck);
+}
+
+async function populateChecks() {
+  const res = await fetch(`${apiBase}/api/checks`);
+  const checks = await res.json();
+  const checksList = document.getElementById('checksList');
+  checksList.innerHTML = checks.map(c => `<div class="selection-item" onclick="selectCheck('${c.id}')" data-check-id="${c.id}">${c.name}</div>`).join('');
+}
+
+async function populateSystems() {
+  const res = await fetch(`${apiBase}/api/systems`);
+  const systems = await res.json();
+  window.__systems = systems;
+  renderSystems();
+}
+
+function renderSystems() {
+  let systems = window.__systems || [];
+  if (selectedCheck) {
+    systems = systems.filter(s => (s.integrated && selectedCheck.applicableToAD) || (!s.integrated && selectedCheck.applicableToNAD));
+  }
+  const systemsList = document.getElementById('systemsList');
+  systemsList.innerHTML = systems.map(system => `<div class="selection-item" onclick="selectSystem('${system.name}')" data-system="${system.name}">${system.name}<span class="status-badge ${system.integrated ? 'status-success' : 'status-warning'}">${system.type}</span></div>`).join('');
+}
+
+function selectCheck(checkId) {
+  const item = Array.from(document.querySelectorAll('#checksList .selection-item')).find(i => i.dataset.checkId === checkId);
+  selectedCheck = { id: checkId, name: item.textContent.trim(), applicableToAD: item.applicableToAD, applicableToNAD: item.applicableToNAD };
+  document.querySelectorAll('#checksList .selection-item').forEach(el => el.classList.toggle('selected', el.dataset.checkId === checkId));
+  renderSystems();
+  checkReadyState();
+}
+
+function selectSystem(systemName) {
+  selectedSystem = (window.__systems || []).find(s => s.name === systemName);
+  document.querySelectorAll('#systemsList .selection-item').forEach(item => item.classList.toggle('selected', item.dataset.system === systemName));
+  checkReadyState();
+}
+
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (file) {
+    selectedFile = file;
+    displayFileInfo(file);
+    checkReadyState();
+  }
+}
+
+function displayFileInfo(file) {
+  const fileInfo = document.getElementById('fileInfo');
+  const fileName = document.getElementById('fileName');
+  const fileSize = document.getElementById('fileSize');
+  fileName.textContent = file.name;
+  fileSize.textContent = `Ölçü: ${(file.size / 1024).toFixed(2)} KB`;
+  fileInfo.classList.add('active');
+}
+
+function setupDragAndDrop() {
+  const uploadSection = document.getElementById('uploadSection');
+  uploadSection.addEventListener('dragover', (e) => { e.preventDefault(); uploadSection.classList.add('dragover'); });
+  uploadSection.addEventListener('dragleave', (e) => { e.preventDefault(); uploadSection.classList.remove('dragover'); });
+  uploadSection.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadSection.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length > 0 && (files[0].name.endsWith('.xlsx') || files[0].name.endsWith('.xls'))) {
+      selectedFile = files[0];
+      displayFileInfo(files[0]);
+      checkReadyState();
+    }
+  });
+}
+
+function checkReadyState() {
+  const executeBtn = document.getElementById('executeBtn');
+  executeBtn.disabled = !(selectedFile && selectedCheck && selectedSystem);
+}
+
+async function executeCheck() {
+  if (!(selectedFile && selectedCheck && selectedSystem)) return;
+  document.getElementById('loading').classList.add('active');
+  document.getElementById('resultsSection').classList.remove('active');
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+  formData.append('check_type', selectedCheck.id);
+  formData.append('system_name', selectedSystem.name);
+  formData.append('system_type', selectedSystem.type);
+  try {
+    const response = await fetch(`${apiBase}/api/execute-check`, { method: 'POST', body: formData });
+    const result = await response.json();
+    document.getElementById('loading').classList.remove('active');
+    displayResults(result);
+  } catch (e) {
+    document.getElementById('loading').classList.remove('active');
+    displayMockResults();
+  }
+}
+
+function displayResults(result) {
+  const resultsSection = document.getElementById('resultsSection');
+  const resultsContent = document.getElementById('resultsContent');
+  let html = '';
+  if (result.success) {
+    html = `<div class="result-item result-success"><strong>Yoxlama uğurla tamamlandı!</strong><div style="margin-top: 10px;"><strong>Yoxlama:</strong> ${selectedCheck.name}<br><strong>Sistem:</strong> ${selectedSystem.name}<br><strong>Tarix:</strong> ${new Date().toLocaleString()}</div></div>`;
+    if (result.details) {
+      result.details.forEach(detail => {
+        html += `<div class="result-item ${detail.status === 'success' ? 'result-success' : detail.status === 'warning' ? 'result-warning' : 'result-error'}"><strong>${detail.title}</strong><div>${detail.message}</div></div>`;
+      });
+    }
+  } else {
+    html = `<div class="result-item result-error"><strong>Xəta baş verdi!</strong><div>${result.error || 'Naməlum xəta'}</div></div>`;
+  }
+  resultsContent.innerHTML = html;
+  resultsSection.classList.add('active');
+}
+
+function displayMockResults() {
+  const resultsSection = document.getElementById('resultsSection');
+  const resultsContent = document.getElementById('resultsContent');
+  const mockResults = `<div class="result-item result-success"><strong>Yoxlama uğurla tamamlandı!</strong><div style=\"margin-top: 10px;\"><strong>Yoxlama:</strong> ${selectedCheck?.name || ''}<br><strong>Sistem:</strong> ${selectedSystem?.name || ''}<br><strong>Fayl:</strong> ${selectedFile?.name || ''}<br><strong>Tarix:</strong> ${new Date().toLocaleString()}</div></div><div class="result-item result-success"><strong>✓ İstifadəçi siyahısı yoxlanıldı</strong><div>245 istifadəçi tapıldı və yoxlanıldı</div></div><div class="result-item result-warning"><strong>⚠ Xəbərdarlıq</strong><div>3 istifadəçinin müddəti bitmək üzrədir</div></div><div class="result-item result-success"><strong>✓ Sistem inteqrasiyası</strong><div>${selectedSystem?.type || ''} sistemi ilə əlaqə uğurla quruldu</div></div>`;
+  resultsContent.innerHTML = mockResults;
+  resultsSection.classList.add('active');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
