@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Results</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fb; margin: 0; }
+        .container { max-width: 1100px; margin: 30px auto; background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: #fff; padding: 22px 28px; display: flex; align-items: center; justify-content: space-between; }
+        .title { font-size: 1.4rem; font-weight: 600; }
+        .meta { font-size: 0.95rem; opacity: 0.9; }
+        .content { padding: 24px 28px 32px; }
+        .summary-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat { background: #f8f9ff; border-radius: 12px; padding: 16px; text-align: center; }
+        .stat .num { font-size: 1.6rem; color: #667eea; font-weight: 700; }
+        .stat .lbl { color: #666; margin-top: 4px; font-size: 0.9rem; text-transform: uppercase; letter-spacing: .5px; }
+        .result-item { border-left: 4px solid #667eea; background: #f8f9ff; padding: 14px 16px; border-radius: 10px; margin-bottom: 12px; }
+        .result-success { border-left-color: #48bb78; background: #f0fff4; }
+        .result-error { border-left-color: #f56565; background: #fff5f5; }
+        .result-warning { border-left-color: #ed8936; background: #fffdf7; }
+        .toolbar { display:flex; gap: 10px; }
+        .btn { appearance:none; border:none; border-radius: 10px; padding: 10px 14px; font-weight:600; cursor:pointer; }
+        .btn-secondary { background:#edf2f7; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:#fff; }
+        a.btn { text-decoration:none; display:inline-block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <div class="title">Yoxlama nəticələri</div>
+                <div class="meta" id="meta"></div>
+            </div>
+            <div class="toolbar">
+                <a class="btn btn-secondary" href="./index.html">↩ Geri</a>
+                <button id="downloadBtn" class="btn btn-primary" style="display:none">📥 Nəticəni Endir</button>
+            </div>
+        </div>
+        <div class="content">
+            <div id="summary" class="summary-stats"></div>
+            <div id="messages"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5500';
+        function ucfirstWords(str){ return str.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase()); }
+
+        function render(){
+            const raw = sessionStorage.getItem('acm_last_result');
+            if(!raw){
+                document.getElementById('meta').textContent = 'Nəticə tapılmadı. Lütfən, yoxlamanı yenidən başladın.';
+                return;
+            }
+            const { selectedCheck, selectedSystem, selectedFileName, result } = JSON.parse(raw);
+            document.getElementById('meta').textContent = `Yoxlama: ${selectedCheck.name} • Sistem: ${selectedSystem.name} • Fayl: ${selectedFileName} • Tarix: ${new Date().toLocaleString()}`;
+
+            // Summary
+            const summaryEl = document.getElementById('summary');
+            summaryEl.innerHTML = '';
+            if(result && result.success && result.summary){
+                const frag = document.createDocumentFragment();
+                Object.entries(result.summary).forEach(([k,v]) => {
+                    const div = document.createElement('div');
+                    div.className = 'stat';
+                    div.innerHTML = `<div class="num">${v}</div><div class="lbl">${ucfirstWords(k)}</div>`;
+                    frag.appendChild(div);
+                });
+                summaryEl.appendChild(frag);
+            }
+
+            // Messages / details
+            const messagesEl = document.getElementById('messages');
+            messagesEl.innerHTML = '';
+            if(result && result.details && Array.isArray(result.details)){
+                result.details.forEach(d => {
+                    const div = document.createElement('div');
+                    const cls = d.status === 'success' ? 'result-success' : d.status === 'warning' ? 'result-warning' : 'result-error';
+                    div.className = `result-item ${cls}`;
+                    div.innerHTML = `<strong>${d.title}</strong><div style="margin-top:8px;">${d.message}</div>`;
+                    messagesEl.appendChild(div);
+                });
+            } else if(result && !result.success){
+                const div = document.createElement('div');
+                div.className = 'result-item result-error';
+                div.innerHTML = `<strong>❌ Xəta baş verdi!</strong><div style="margin-top:8px;">${result.error || 'Naməlum xəta'}</div>`;
+                messagesEl.appendChild(div);
+            }
+
+            // Download button
+            const downloadBtn = document.getElementById('downloadBtn');
+            if(result && result.output_file){
+                downloadBtn.style.display = 'inline-block';
+                downloadBtn.onclick = () => {
+                    window.open(`${API_BASE}/api/download-result/${result.output_file}`, '_blank');
+                };
+            }
+        }
+
+        render();
+    </script>
+</body>
+</html>
