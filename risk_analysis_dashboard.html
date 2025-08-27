@@ -236,7 +236,7 @@
                 </div>
                 <div class="chart-container">
                     <h3 class="chart-title">Risklərin adı - Top 10</h3>
-                    <div class="chart-wrapper" id="namesWrapper" style="align-items: flex-start; height: auto;">
+                    <div class="chart-wrapper" id="namesWrapper" style="align-items: flex-start; height: 360px; overflow-y: auto;">
                         <ul id="namesList" class="names-list" style="width:100%;"></ul>
                     </div>
                 </div>
@@ -902,9 +902,18 @@
             const ownerTop = topEntries(ownerCounts, 10);
             monthlyCharts.owner = createBarChart('chartMonthlyOwner', ownerTop.map(x=>x[0]), ownerTop.map(x=>x[1]), '#4f46e5', true);
 
-            // Build names list (Top 10) with Sıra nömrəsi (Column B)
-            const nameTop = topEntries(nameCounts, 10).map(entry => ({ name: entry[0], count: entry[1] }));
-            renderMonthlyNamesList(nameTop, filteredDataMonthly);
+            // Build names list (Top 10) with Sıra nömrəsi (Column B), only 'Kritik' and 'Yüksək'
+            const filteredForNames = filteredDataMonthly.filter(r => {
+                const d = (r[17] ? r[17].toString().trim().toLowerCase() : '');
+                return d === 'kritik' || d === 'yüksək' || d === 'yuksek';
+            });
+            const filteredNameCounts = {};
+            filteredForNames.forEach(r => {
+                const nm = (r[11] ? r[11].toString().trim() : 'Unknown');
+                filteredNameCounts[nm] = (filteredNameCounts[nm] || 0) + 1;
+            });
+            const nameTop = topEntries(filteredNameCounts, 10).map(entry => ({ name: entry[0], count: entry[1] }));
+            renderMonthlyNamesList(nameTop, filteredForNames);
 
             // Build heatmap grid tiles colored by degree with numeric IDs
             renderMonthlyHeatGrid(filteredDataMonthly);
@@ -1188,17 +1197,10 @@
                                `<div class="names-item-ids">Sıra nömrəsi: ${ids.join(', ')}</div>`;
                 listEl.appendChild(li);
             });
-            // Dynamic wrapper height: base per-item height, plus extra for long names
+            // Fixed wrapper height with scroll; no dynamic resizing
             if (wrapper) {
-                const baseItem = 56; // base height per item
-                const extraPer100Chars = 18; // add height per 100 chars to accommodate wrapping
-                let total = 24; // padding
-                nameTop.forEach(({ name }) => {
-                    const lengthFactor = Math.ceil((name ? name.length : 0) / 100);
-                    total += baseItem + lengthFactor * extraPer100Chars;
-                });
-                const desiredHeight = Math.max(300, total);
-                wrapper.style.height = desiredHeight + 'px';
+                wrapper.style.height = '360px';
+                wrapper.style.overflowY = 'auto';
             }
         }
 
