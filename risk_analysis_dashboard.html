@@ -162,7 +162,7 @@
         <div class="success-message" id="successMessage"></div>
  
         <div class="results" id="results">
-            <button class="results-back-button" id="resultsBackButton" onclick="goBackToUpload()">←</button>
+            <button class="results-back-button" id="resultsBackButton" onclick="goBackToModeSelection()">←</button>
             
             <div class="date-range-section" id="dateRangeSection">
                 <h3 style="text-align: center; margin-bottom: 25px; color: #333; font-size: 1.5rem;">Select date range</h3>
@@ -558,6 +558,40 @@
             document.getElementById('currentFilterInfo').style.display = 'none';
             document.getElementById('modeSelection').style.display = 'none';
             dateRangeVisible = false;
+            if (chartA) { chartA.destroy(); chartA = null; }
+            if (chartR) { chartR.destroy(); chartR = null; }
+            if (monthlyCharts.status) { monthlyCharts.status.destroy(); monthlyCharts.status = null; }
+            if (monthlyCharts.owner) { monthlyCharts.owner.destroy(); monthlyCharts.owner = null; }
+            if (monthlyCharts.names) { monthlyCharts.names.destroy(); monthlyCharts.names = null; }
+            if (monthlyCharts.heat) { monthlyCharts.heat.destroy(); monthlyCharts.heat = null; }
+        }
+
+        // New: Go back only to mode selection (keep uploaded data)
+        function goBackToModeSelection() {
+            // Keep file in memory, just reset mode-specific UI
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('modeSelection').style.display = 'block';
+            document.getElementById('dateRangeSection').style.display = 'none';
+            document.getElementById('chartsSectionRA').style.display = 'none';
+            document.getElementById('chartsSectionMonthly').style.display = 'none';
+            document.getElementById('searchSection').style.display = 'none';
+            document.getElementById('currentFilterInfo').style.display = 'none';
+            document.getElementById('filterTags').innerHTML = '';
+            document.getElementById('risksList').innerHTML = '';
+            document.getElementById('risksList').style.display = 'none';
+
+            activeFilters = { status: [], risk: [] };
+            currentSearchTerm = '';
+            const searchInputEl = document.getElementById('searchInput');
+            if (searchInputEl) searchInputEl.value = '';
+
+            filteredData = [];
+            filteredDataMonthly = [];
+            currentDisplayData = [];
+            currentMode = null;
+            dateRangeVisible = false;
+
             if (chartA) { chartA.destroy(); chartA = null; }
             if (chartR) { chartR.destroy(); chartR = null; }
             if (monthlyCharts.status) { monthlyCharts.status.destroy(); monthlyCharts.status = null; }
