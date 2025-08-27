@@ -272,6 +272,8 @@
         const navRHI = document.getElementById('navRHI');
         const navMITRE = document.getElementById('navMITRE');
         const navRISK = document.getElementById('navRISK');
+        const resultsBackButton = document.getElementById('resultsBackButton');
+        const modeSelectionBackButton = document.getElementById('modeSelectionBackButton');
  
         function setActiveNav(btn){
             [navKRI, navRHI, navMITRE, navRISK].forEach(b=>b.classList.remove('active'));
@@ -302,6 +304,8 @@
             document.getElementById('results').style.display = 'none';
             document.getElementById('modeSelection').style.display = 'none';
             document.getElementById('currentFilterInfo').style.display = 'none';
+            if (resultsBackButton) resultsBackButton.style.display = 'none';
+            if (modeSelectionBackButton) modeSelectionBackButton.style.display = 'none';
         });
  
         document.getElementById('fileInput').addEventListener('change', function(e) {
@@ -324,12 +328,16 @@
             document.getElementById('modeSelection').style.display = 'none';
             document.getElementById('dateRangeSection').style.display = 'block';
             dateRangeVisible = true;
+            if (resultsBackButton) resultsBackButton.style.display = 'inline-flex';
+            if (modeSelectionBackButton) modeSelectionBackButton.style.display = 'none';
         });
         document.getElementById('modeAnalysis').addEventListener('click', function(){
             currentMode = 'analysis';
             document.getElementById('modeSelection').style.display = 'none';
             document.getElementById('dateRangeSection').style.display = 'block';
             dateRangeVisible = true;
+            if (resultsBackButton) resultsBackButton.style.display = 'inline-flex';
+            if (modeSelectionBackButton) modeSelectionBackButton.style.display = 'none';
         });
 
         function toggleDateRangeSection() {
@@ -487,6 +495,8 @@
                     document.getElementById('currentFilterInfo').style.display = 'none';
                     dateRangeVisible = false;
                     setDefaultDateRange();
+                    if (resultsBackButton) resultsBackButton.style.display = 'none';
+                    if (modeSelectionBackButton) modeSelectionBackButton.style.display = 'inline-flex';
                 } catch (error) {
                     console.error('Error processing file:', error);
                     showError('Error processing file: ' + error.message);
@@ -528,6 +538,8 @@
                         document.getElementById('chartsSectionMonthly').style.display = 'none';
                         document.getElementById('searchSection').style.display = 'block';
                         document.getElementById('currentFilterInfo').style.display = 'block';
+                        if (resultsBackButton) resultsBackButton.style.display = 'inline-flex';
+                        if (modeSelectionBackButton) modeSelectionBackButton.style.display = 'none';
                     } else if (currentMode === 'monthly') {
                         analyzeDataMonthly(allData, fromDate, toDate);
                         document.getElementById('dateRangeSection').style.display = 'none';
@@ -537,6 +549,8 @@
                         document.getElementById('currentFilterInfo').style.display = 'block';
                         document.getElementById('risksList').style.display = 'none';
                         document.getElementById('filterTags').style.display = 'none';
+                        if (resultsBackButton) resultsBackButton.style.display = 'inline-flex';
+                        if (modeSelectionBackButton) modeSelectionBackButton.style.display = 'none';
                     }
                     dateRangeVisible = false;
                 } catch (error) {
@@ -558,6 +572,8 @@
             document.getElementById('currentFilterInfo').style.display = 'none';
             document.getElementById('modeSelection').style.display = 'none';
             dateRangeVisible = false;
+            if (resultsBackButton) resultsBackButton.style.display = 'none';
+            if (modeSelectionBackButton) modeSelectionBackButton.style.display = 'none';
             if (chartA) { chartA.destroy(); chartA = null; }
             if (chartR) { chartR.destroy(); chartR = null; }
             if (monthlyCharts.status) { monthlyCharts.status.destroy(); monthlyCharts.status = null; }
@@ -591,6 +607,9 @@
             currentDisplayData = [];
             currentMode = null;
             dateRangeVisible = false;
+
+            if (resultsBackButton) resultsBackButton.style.display = 'none';
+            if (modeSelectionBackButton) modeSelectionBackButton.style.display = 'inline-flex';
 
             if (chartA) { chartA.destroy(); chartA = null; }
             if (chartR) { chartR.destroy(); chartR = null; }
