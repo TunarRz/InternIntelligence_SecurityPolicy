@@ -31,6 +31,22 @@
         .results-back-button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
         .export-button { background: linear-gradient(45deg, #10b981, #059669); color: white; border: none; padding: 12px 25px; border-radius: 25px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.3s ease; margin-bottom: 20px; display: inline-flex; align-items: center; gap: 8px; margin-left: 10px; }
         .export-button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+        /* Monthly names list */
+        .names-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+        .names-item { background: #f8f9ff; border: 2px solid #e1e5fe; border-radius: 8px; padding: 10px 12px; }
+        .names-item-title { font-weight: 700; color: #333; }
+        .names-item-ids { font-size: 0.9rem; color: #555; margin-top: 4px; }
+        /* Monthly heat map */
+        .heatmap-legend { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 8px; }
+        .legend-dot { width: 14px; height: 14px; border-radius: 4px; }
+        .heatmap-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+        .heatmap-tile { width: 36px; height: 36px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .degree-kritik { background: #382a17; }
+        .degree-yuksek { background: #d2042d; }
+        .degree-orta { background: #32cd32; }
+        .degree-asagi { background: #aaff00; color: #1f2937; }
+        .degree-unknown { background: #9e9e9e; }
         .loading { display: none; text-align: center; margin: 20px 0; }
         .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -219,15 +235,18 @@
                     </div>
                 </div>
                 <div class="chart-container">
-                    <h3 class="chart-title">Risklərin adı (L sütunu) - Top 10</h3>
-                    <div class="chart-wrapper">
-                        <canvas id="chartMonthlyNames"></canvas>
+                    <h3 class="chart-title">Risklərin adı - Top 10</h3>
+                    <div class="chart-wrapper" style="align-items: flex-start;">
+                        <ul id="namesList" class="names-list" style="width:100%;"></ul>
                     </div>
                 </div>
                 <div class="chart-container">
-                    <h3 class="chart-title">Risk Heat Map (Məxsusi dərəcə - R sütunu)</h3>
-                    <div class="chart-wrapper">
-                        <canvas id="chartMonthlyHeat"></canvas>
+                    <h3 class="chart-title">Risk Heat Map</h3>
+                    <div class="chart-wrapper" style="align-items: flex-start;">
+                        <div style="width:100%;">
+                            <div class="heatmap-legend" id="heatmapLegend"></div>
+                            <div class="heatmap-grid" id="heatmapGrid"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -871,22 +890,24 @@
                 return 'rgb(204, 204, 204)';
             });
 
-            // Destroy previous
+            // Destroy previous charts (status/owner) and clear custom UI
             if (monthlyCharts.status) { monthlyCharts.status.destroy(); monthlyCharts.status = null; }
             if (monthlyCharts.owner) { monthlyCharts.owner.destroy(); monthlyCharts.owner = null; }
-            if (monthlyCharts.names) { monthlyCharts.names.destroy(); monthlyCharts.names = null; }
-            if (monthlyCharts.heat) { monthlyCharts.heat.destroy(); monthlyCharts.heat = null; }
+            monthlyCharts.names = null;
+            monthlyCharts.heat = null;
 
-            // Build charts
+            // Build charts for status and owner
             monthlyCharts.status = createPieChart('chartMonthlyStatus', Object.keys(statusCounts), Object.values(statusCounts), statusColors);
 
             const ownerTop = topEntries(ownerCounts, 10);
             monthlyCharts.owner = createBarChart('chartMonthlyOwner', ownerTop.map(x=>x[0]), ownerTop.map(x=>x[1]), '#4f46e5', true);
 
-            const nameTop = topEntries(nameCounts, 10);
-            monthlyCharts.names = createBarChart('chartMonthlyNames', nameTop.map(x=>x[0]), nameTop.map(x=>x[1]), '#0ea5e9', true);
+            // Build names list (Top 10) with Sıra nömrəsi (Column B)
+            const nameTop = topEntries(nameCounts, 10).map(entry => ({ name: entry[0], count: entry[1] }));
+            renderMonthlyNamesList(nameTop, filteredDataMonthly);
 
-            monthlyCharts.heat = createBarChart('chartMonthlyHeat', Object.keys(degreeCounts), Object.values(degreeCounts), degreeColors, false, true);
+            // Build heatmap grid tiles colored by degree with numeric IDs
+            renderMonthlyHeatGrid(filteredDataMonthly);
         }
  
         function createRiskBoxes(dataToShow) {
@@ -1141,6 +1162,75 @@
                     },
                     plugins: { legend: { display: false } }
                 }
+            });
+        }
+
+        // Render Monthly Names list with Sıra nömrəsi (Column B)
+        function renderMonthlyNamesList(nameTop, rows) {
+            const listEl = document.getElementById('namesList');
+            if (!listEl) return;
+            listEl.innerHTML = '';
+            // Map: risk name -> array of Column B ids (unique, up to 10 ids for display brevity)
+            const nameToIds = new Map();
+            rows.forEach(r => {
+                const id = r[1] ? r[1].toString().trim() : 'Unknown'; // Column B
+                const nm = r[11] ? r[11].toString().trim() : 'Unknown'; // Column L
+                if (!nameToIds.has(nm)) nameToIds.set(nm, new Set());
+                nameToIds.get(nm).add(id);
+            });
+            nameTop.forEach(({ name, count }, idx) => {
+                const idsSet = nameToIds.get(name) || new Set();
+                const ids = Array.from(idsSet).slice(0, 25); // show up to 25 IDs
+                const li = document.createElement('li');
+                li.className = 'names-item';
+                li.innerHTML = `<div class="names-item-title">${idx + 1}. ${name} <span style="color:#6b7280;font-weight:600;">(${count})</span></div>` +
+                               `<div class="names-item-ids">Sıra nömrəsi: ${ids.join(', ')}</div>`;
+                listEl.appendChild(li);
+            });
+        }
+
+        // Render Monthly Heat Grid as tiles with numeric IDs and color by degree (Column R)
+        function renderMonthlyHeatGrid(rows) {
+            const gridEl = document.getElementById('heatmapGrid');
+            const legendEl = document.getElementById('heatmapLegend');
+            if (!gridEl || !legendEl) return;
+            gridEl.innerHTML = '';
+            legendEl.innerHTML = '';
+
+            const degreeToClass = (deg) => {
+                if (!deg) return 'degree-unknown';
+                const d = deg.toString().trim().toLowerCase();
+                if (d === 'kritik') return 'degree-kritik';
+                if (d === 'yüksək' || d === 'yuksek') return 'degree-yuksek';
+                if (d === 'orta') return 'degree-orta';
+                if (d === 'aşağı' || d === 'asagi') return 'degree-asagi';
+                return 'degree-unknown';
+            };
+
+            // Legend
+            const legendItems = [
+                { label: 'Kritik', cls: 'degree-kritik' },
+                { label: 'Yüksək', cls: 'degree-yuksek' },
+                { label: 'Orta', cls: 'degree-orta' },
+                { label: 'Aşağı', cls: 'degree-asagi' },
+                { label: 'Unknown', cls: 'degree-unknown' }
+            ];
+            legendItems.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'legend-item';
+                el.innerHTML = `<span class="legend-dot ${item.cls}"></span><span>${item.label}</span>`;
+                legendEl.appendChild(el);
+            });
+
+            // Tiles
+            rows.forEach((r, i) => {
+                const deg = r[17] ? r[17].toString().trim() : 'Unknown'; // Column R
+                const cls = degreeToClass(deg);
+                const tile = document.createElement('div');
+                tile.className = `heatmap-tile ${cls}`;
+                tile.textContent = (i + 1).toString(); // simple numeric id per order
+                tile.title = `Sıra: ${r[1] || ''} | Dərəcə: ${deg}`;
+                gridEl.appendChild(tile);
             });
         }
     </script>
