@@ -32,10 +32,10 @@
         .export-button { background: linear-gradient(45deg, #10b981, #059669); color: white; border: none; padding: 12px 25px; border-radius: 25px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.3s ease; margin-bottom: 20px; display: inline-flex; align-items: center; gap: 8px; margin-left: 10px; }
         .export-button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
         /* Monthly names list */
-        .names-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
-        .names-item { background: #f8f9ff; border: 2px solid #e1e5fe; border-radius: 8px; padding: 10px 12px; }
-        .names-item-title { font-weight: 700; color: #333; }
-        .names-item-ids { font-size: 0.9rem; color: #555; margin-top: 4px; }
+        .names-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; width: 100%; }
+        .names-item { background: #f8f9ff; border: 2px solid #e1e5fe; border-radius: 8px; padding: 10px 12px; width: 100%; }
+        .names-item-title { font-weight: 700; color: #333; white-space: normal; word-break: break-word; overflow-wrap: anywhere; line-height: 1.35; }
+        .names-item-ids { font-size: 0.9rem; color: #555; margin-top: 6px; white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
         /* Monthly heat map */
         .heatmap-legend { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
         .legend-item { display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 8px; }
@@ -1188,11 +1188,16 @@
                                `<div class="names-item-ids">Sıra nömrəsi: ${ids.join(', ')}</div>`;
                 listEl.appendChild(li);
             });
-            // Dynamic wrapper height
+            // Dynamic wrapper height: base per-item height, plus extra for long names
             if (wrapper) {
-                const approximateItemHeightPx = 56;
-                const paddingPx = 24;
-                const desiredHeight = Math.max(300, nameTop.length * approximateItemHeightPx + paddingPx);
+                const baseItem = 56; // base height per item
+                const extraPer100Chars = 18; // add height per 100 chars to accommodate wrapping
+                let total = 24; // padding
+                nameTop.forEach(({ name }) => {
+                    const lengthFactor = Math.ceil((name ? name.length : 0) / 100);
+                    total += baseItem + lengthFactor * extraPer100Chars;
+                });
+                const desiredHeight = Math.max(300, total);
                 wrapper.style.height = desiredHeight + 'px';
             }
         }
