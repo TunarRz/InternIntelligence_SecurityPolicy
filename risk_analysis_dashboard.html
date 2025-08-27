@@ -40,8 +40,8 @@
         .heatmap-legend { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
         .legend-item { display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 8px; }
         .legend-dot { width: 14px; height: 14px; border-radius: 4px; }
-        .heatmap-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-        .heatmap-tile { width: 36px; height: 36px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .heatmap-grid { display: grid; gap: 8px; }
+        .heatmap-tile { width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .degree-kritik { background: #382a17; }
         .degree-yuksek { background: #d2042d; }
         .degree-orta { background: #32cd32; }
@@ -236,13 +236,13 @@
                 </div>
                 <div class="chart-container">
                     <h3 class="chart-title">Risklərin adı - Top 10</h3>
-                    <div class="chart-wrapper" style="align-items: flex-start;">
+                    <div class="chart-wrapper" id="namesWrapper" style="align-items: flex-start; height: auto;">
                         <ul id="namesList" class="names-list" style="width:100%;"></ul>
                     </div>
                 </div>
                 <div class="chart-container">
                     <h3 class="chart-title">Risk Heat Map</h3>
-                    <div class="chart-wrapper" style="align-items: flex-start;">
+                    <div class="chart-wrapper" id="heatmapWrapper" style="align-items: flex-start; height: auto;">
                         <div style="width:100%;">
                             <div class="heatmap-legend" id="heatmapLegend"></div>
                             <div class="heatmap-grid" id="heatmapGrid"></div>
@@ -1168,6 +1168,7 @@
         // Render Monthly Names list with Sıra nömrəsi (Column B)
         function renderMonthlyNamesList(nameTop, rows) {
             const listEl = document.getElementById('namesList');
+            const wrapper = document.getElementById('namesWrapper');
             if (!listEl) return;
             listEl.innerHTML = '';
             // Map: risk name -> array of Column B ids (unique, up to 10 ids for display brevity)
@@ -1187,12 +1188,20 @@
                                `<div class="names-item-ids">Sıra nömrəsi: ${ids.join(', ')}</div>`;
                 listEl.appendChild(li);
             });
+            // Dynamic wrapper height
+            if (wrapper) {
+                const approximateItemHeightPx = 56;
+                const paddingPx = 24;
+                const desiredHeight = Math.max(300, nameTop.length * approximateItemHeightPx + paddingPx);
+                wrapper.style.height = desiredHeight + 'px';
+            }
         }
 
         // Render Monthly Heat Grid as tiles with numeric IDs and color by degree (Column R)
         function renderMonthlyHeatGrid(rows) {
             const gridEl = document.getElementById('heatmapGrid');
             const legendEl = document.getElementById('heatmapLegend');
+            const wrapper = document.getElementById('heatmapWrapper');
             if (!gridEl || !legendEl) return;
             gridEl.innerHTML = '';
             legendEl.innerHTML = '';
@@ -1221,6 +1230,29 @@
                 el.innerHTML = `<span class="legend-dot ${item.cls}"></span><span>${item.label}</span>`;
                 legendEl.appendChild(el);
             });
+
+            // Determine dynamic columns to fill available space
+            const gapPx = 8;
+            let containerWidth = 0;
+            try {
+                containerWidth = gridEl.clientWidth || gridEl.getBoundingClientRect().width || 0;
+            } catch(e) { containerWidth = 0; }
+            if (!containerWidth && wrapper) {
+                try { containerWidth = wrapper.clientWidth || wrapper.getBoundingClientRect().width || 800; } catch(e) { containerWidth = 800; }
+            }
+            if (!containerWidth) containerWidth = 800;
+            const approxColsBySqrt = Math.max(2, Math.ceil(Math.sqrt(rows.length)));
+            const minTilePx = 34;
+            const maxColsByWidth = Math.max(2, Math.floor((containerWidth + gapPx) / (minTilePx + gapPx)));
+            const cols = Math.min(maxColsByWidth, approxColsBySqrt);
+            gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            // Adjust wrapper height to cover grid fully (square-like)
+            if (wrapper) {
+                const rowsCount = Math.max(1, Math.ceil(rows.length / cols));
+                const tileSize = Math.floor((containerWidth - gapPx * (cols - 1)) / cols);
+                const totalHeight = rowsCount * tileSize + gapPx * (rowsCount - 1) + 60; // +legend room
+                wrapper.style.height = Math.max(320, totalHeight) + 'px';
+            }
 
             // Tiles
             rows.forEach((r, i) => {
