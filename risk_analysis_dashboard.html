@@ -162,7 +162,7 @@
         <div class="success-message" id="successMessage"></div>
  
         <div class="results" id="results">
-            <button class="results-back-button" id="resultsBackButton" onclick="goBackToModeSelection()">←</button>
+            <button class="results-back-button" id="resultsBackButton" onclick="resultsBackAction()">←</button>
             
             <div class="date-range-section" id="dateRangeSection">
                 <h3 style="text-align: center; margin-bottom: 25px; color: #333; font-size: 1.5rem;">Select date range</h3>
@@ -967,6 +967,17 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') closeRiskDetail();
         });
+
+        // Back button smart handler: if on mode selection, go to upload; else go to mode selection
+        function resultsBackAction() {
+            const modeSelectionEl = document.getElementById('modeSelection');
+            const isModeSelectionVisible = window.getComputedStyle(modeSelectionEl).display !== 'none';
+            if (isModeSelectionVisible) {
+                goBackToUpload();
+            } else {
+                goBackToModeSelection();
+            }
+        }
  
         function createChart(canvasId, title, data, colors, chartType) {
             const ctx = document.getElementById(canvasId).getContext('2d');
