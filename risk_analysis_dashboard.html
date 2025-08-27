@@ -29,6 +29,8 @@
         .filter-button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .results-back-button { background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; padding: 12px 25px; border-radius: 25px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.3s ease; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
         .results-back-button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+        .export-button { background: linear-gradient(45deg, #10b981, #059669); color: white; border: none; padding: 12px 25px; border-radius: 25px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.3s ease; margin-bottom: 20px; display: inline-flex; align-items: center; gap: 8px; margin-left: 10px; }
+        .export-button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
         .loading { display: none; text-align: center; margin: 20px 0; }
         .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -163,7 +165,10 @@
         <div class="success-message" id="successMessage"></div>
  
         <div class="results" id="results">
-            <button class="results-back-button" id="resultsBackButton" onclick="resultsBackAction()">←</button>
+            <div style="display:flex; align-items:center; justify-content:flex-start; gap:10px;">
+                <button class="results-back-button" id="resultsBackButton" onclick="resultsBackAction()">←</button>
+                <button class="export-button" id="exportButton" onclick="exportCurrentView()" style="display:none">Export</button>
+            </div>
             
             <div class="date-range-section" id="dateRangeSection">
                 <h3 style="text-align: center; margin-bottom: 25px; color: #333; font-size: 1.5rem;">Select date range</h3>
@@ -540,6 +545,8 @@
                         document.getElementById('currentFilterInfo').style.display = 'block';
                         if (resultsBackButton) resultsBackButton.style.display = 'inline-flex';
                         if (modeSelectionBackButton) modeSelectionBackButton.style.display = 'none';
+                        const exportBtn = document.getElementById('exportButton');
+                        if (exportBtn) exportBtn.style.display = 'inline-flex';
                     } else if (currentMode === 'monthly') {
                         analyzeDataMonthly(allData, fromDate, toDate);
                         document.getElementById('dateRangeSection').style.display = 'none';
@@ -551,6 +558,8 @@
                         document.getElementById('filterTags').style.display = 'none';
                         if (resultsBackButton) resultsBackButton.style.display = 'inline-flex';
                         if (modeSelectionBackButton) modeSelectionBackButton.style.display = 'none';
+                        const exportBtn = document.getElementById('exportButton');
+                        if (exportBtn) exportBtn.style.display = 'inline-flex';
                     }
                     dateRangeVisible = false;
                 } catch (error) {
@@ -574,6 +583,8 @@
             dateRangeVisible = false;
             if (resultsBackButton) resultsBackButton.style.display = 'none';
             if (modeSelectionBackButton) modeSelectionBackButton.style.display = 'none';
+            const exportBtn = document.getElementById('exportButton');
+            if (exportBtn) exportBtn.style.display = 'none';
             if (chartA) { chartA.destroy(); chartA = null; }
             if (chartR) { chartR.destroy(); chartR = null; }
             if (monthlyCharts.status) { monthlyCharts.status.destroy(); monthlyCharts.status = null; }
@@ -610,6 +621,8 @@
 
             if (resultsBackButton) resultsBackButton.style.display = 'none';
             if (modeSelectionBackButton) modeSelectionBackButton.style.display = 'inline-flex';
+            const exportBtn = document.getElementById('exportButton');
+            if (exportBtn) exportBtn.style.display = 'none';
 
             if (chartA) { chartA.destroy(); chartA = null; }
             if (chartR) { chartR.destroy(); chartR = null; }
@@ -995,6 +1008,45 @@
                 goBackToUpload();
             } else {
                 goBackToModeSelection();
+            }
+        }
+
+        // Export current view to Excel
+        function exportCurrentView() {
+            try {
+                const fromDate = document.getElementById('fromDate').value;
+                const toDate = document.getElementById('toDate').value;
+                let rows = [];
+                if (currentMode === 'analysis') {
+                    // Use currentDisplayData (respecting search and status/risk filters)
+                    rows = currentDisplayData && currentDisplayData.length ? currentDisplayData : filteredData;
+                } else if (currentMode === 'monthly') {
+                    rows = filteredDataMonthly;
+                }
+                if (!rows || rows.length === 0) {
+                    showError('No data to export.');
+                    return;
+                }
+
+                // Build a header row from first row of allData if available
+                let header = [];
+                if (allData && allData.length > 0) {
+                    header = allData[0];
+                } else {
+                    // Fallback generic headers up to max used column R (index 17)
+                    header = Array.from({ length: 18 }, (_, i) => `Column ${String.fromCharCode(65 + i)}`);
+                }
+
+                const exportData = [header, ...rows];
+                const ws = XLSX.utils.aoa_to_sheet(exportData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Export');
+                const baseName = currentMode === 'analysis' ? 'risk-analysis' : 'monthly-risk-report';
+                const dated = `${baseName}_${fromDate || 'from'}_${toDate || 'to'}.xlsx`;
+                XLSX.writeFile(wb, dated);
+            } catch (err) {
+                console.error('Export error:', err);
+                showError('Export failed.');
             }
         }
  
